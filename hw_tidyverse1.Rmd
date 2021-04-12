@@ -23,7 +23,7 @@ Variables:
 
 ## Import required libraries
 ```{r}
-
+library('tidyverse')
 ```
 
 ## 1. Data 
@@ -31,7 +31,7 @@ Variables:
 ### 1.1 Read guide_to_files.csv and create 'biling_speech_data' dataframe
 
 ```{r}
-
+biling_speech_data <- read_csv('guide_to_files.csv')
 ```
 
 ### 1.2 Use `'biling_speech_data'` dataframe and functions from tidyverse to answer the following questions:
@@ -44,7 +44,12 @@ Variables:
 
 
 ```{r}
+nrow(biling_speech_data)
 
+biling_speech_data %>%
+  count(gender)
+
+n_distinct(biling_speech_data$first_language)
 ```
 
 ## 2. Changing Data
@@ -52,20 +57,33 @@ Variables:
 ### 2.1 Choose all numeric columns from the dataframe using tidyselect. Check if there are NA in columns.  
 
 ```{r}
-
+biling_speech_data %>%
+  select(where(is.numeric)) %>%
+  select(where(function(x) !any (is.na(x))))
 ```
 
 
 ### 2.2 Convert all numerical data in the columns chosen before from months to years. Don't forget to save results in the dataframe! 
 
 ```{r}
+convert <- function(x) round(x / 12, 3)
 
+biling_speech_data <- biling_speech_data %>% 
+  mutate(across(where(is.numeric), c(convert)))
+
+biling_speech_data
 ```
 
 ### 2.3 Rename changed columns for convenience
 
 ```{r}
+biling_speech_data <- biling_speech_data %>% 
+  rename(age_of_arrival_to_Canada_years = age_of_arrival_to_Canada_months_1,
+    age_of_English_exposure_years = age_of_English_exposure_months_1,
+    age_at_recording_years = age_at_recording_months_1,
+    years_of_english = months_of_english_1)
 
+biling_speech_data
 ```
 
 ## 3. Analysis of Data
@@ -75,32 +93,39 @@ Variables:
 1. What is the average age of child migration to Canada? 
 
 ```{r}
-
+mean(biling_speech_data$age_of_arrival_to_Canada_years)
 ```
 
 2. How many children whose first language is Spanish learnt English less than 10 month? How many of them are males and females?
 
 ```{r}
-
+biling_speech_data %>%
+  filter(first_language == 'Spanish' & months_of_english < 10) %>% 
+  count(gender)
 ```
 
 3. What is the average age of children speaking the same first language at recording? What is the average migration age of children speaking the same first language?
 
 ```{r}
-
+biling_speech_data %>%
+  group_by(first_language) %>%
+  summarise(mean(age_at_recording_years), mean(age_of_arrival_to_Canada_years))
 ```
 
 
 ### 3.2 Find out mean, min and max age of onset of English acquisition for female and male participants with the help of advanced functions of tidyverse. Add information about their first language. 
 
 ```{r}
-
+biling_speech_data %>%
+  group_by(gender) %>%
+  summarize(across(age_of_English_exposure_years, c(mean = mean, min = min, max = max)))
 ```
 
 ### 3.3 Sort the data alphabetically by the column 'first_language'.
 
 ```{r}
-
+biling_speech_data %>%
+  arrange(first_language)
 ``` 
 
 ##When do children learn words?
@@ -138,25 +163,31 @@ NB!'Freq_CDS' and 'CDS_Freq' columns are the same.
 ### 4.1 Read two tables 
 
 ```{r}
-
+norwegian_words <- read_csv('main_data.csv')
+norwegian_freq <- read_csv('Norwegian_CDS_frequency.csv')
 ```
 
 ### 4.2 Leave only necessary columns
 
 ```{r}
-
+norwegian_words <- norwegian_words %>% 
+  select(c('Translation', 'AoA', 'VSoA','Broad_lex', 'CDS_freq'))
+norwegian_freq <- norwegian_freq %>% 
+  select(c('Translation', 'Freq_NoWaC', 'Freq_CDS'))
 ```
 
 ### 4.3  Join two tables and create a new dataframe 'norw_words'. NB! There shouldn't be duplicates in your new dataframe. 
 
 ```{r}
-
+norw_words <- norwegian_words %>% 
+  left_join(norwegian_freq, by='Translation')
 ```
 
 ### 4.4   Leave only 15 first rows
  
 ```{r}
-
+norw_words <- norw_words %>% 
+  slice(1:15)
 ```
 
 
@@ -165,40 +196,53 @@ NB!'Freq_CDS' and 'CDS_Freq' columns are the same.
 ### 5.1  Create a tibble 'freq_statistics' using 3 columns: 'Translation', 'CDS_Freq', 'Freq_NoWaC'
 
 ```{r}
-
+freq_statistics <- norw_words %>% 
+  select('Translation', 'CDS_freq', 'Freq_NoWaC')
 ```
 Change the format of the tibble using the function tidyr::pivot_longer() or tidyr::pivot_wider().
 
 ```{r}
+freq_statistics %>%
+  pivot_wider(names_from='Freq_NoWaC', values_from='CDS_freq')
 
+freq_statistics %>% 
+  pivot_longer(cols=CDS_freq:Freq_NoWaC, names_to='freq_type', values_to='freq')
 ```
 
 ### 5.2  Get a string vector output with information about classes in the tibble. 
 
 ```{r}
-
+norw_words %>%
+  map_chr(class)
 ```
 
  Present the same information as a dataframe. 
 
 ```{r}
-
+norw_words %>%
+  map_df(class)
 ```
 
 ### 5.3  Convert values from 'CDS_Freq' & 'Freq_NoWaC' to numeric ones. 
 
 ```{r}
+norw_words$CDS_freq = as.numeric(norw_words$CDS_freq)
+norw_words$Freq_NoWaC = as.numeric(norw_words$Freq_NoWaC)
 
+norw_words %>%
+  map_df(class)
 ```
 Get average values of all numeric classes in 'norw_words'.
 
 ```{r}
-
+norw_words %>%
+  summarise(across(where(is.numeric), mean, na.rm = TRUE)) 
 ```
 
 ### 5.4   Create a nested table (by 'Translation')
  
 ```{r}
-
+norw_words %>%
+  nest(Translation)
 ```
 Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
